@@ -1899,6 +1899,7 @@ public class StreamExecutionEnvironment {
                 "Cannot find compatible factory for specified execution.target (=%s)",
                 configuration.get(DeploymentOptions.TARGET));
 
+        //
         CompletableFuture<JobClient> jobClientFuture =
                 executorFactory
                         .getExecutor(configuration)
@@ -2031,6 +2032,7 @@ public class StreamExecutionEnvironment {
      * @return The execution environment of the context in which the program is executed.
      */
     public static StreamExecutionEnvironment getExecutionEnvironment() {
+        System.out.println("=== change here: getExecutionEnvironment ===");
         return getExecutionEnvironment(new Configuration());
     }
 

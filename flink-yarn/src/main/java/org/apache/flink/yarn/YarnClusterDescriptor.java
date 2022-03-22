@@ -531,6 +531,7 @@ public class YarnClusterDescriptor implements ClusterDescriptor<ApplicationId> {
             }
         }
 
+        /* todo 部署前检查，jar包路径，conf路径等 */
         isReadyForDeployment(clusterSpecification);
 
         // ------------------ Check if the specified queue exists --------------------
@@ -785,6 +786,7 @@ public class YarnClusterDescriptor implements ClusterDescriptor<ApplicationId> {
         final List<Path> providedLibDirs =
                 Utils.getQualifiedRemoteSharedPaths(configuration, yarnConfiguration);
 
+        /* todo yarn应用文件上传器，各种配置文件，jar包等(到1099的.close为止) */
         final YarnApplicationFileUploader fileUploader =
                 YarnApplicationFileUploader.from(
                         fs,
@@ -799,6 +801,7 @@ public class YarnClusterDescriptor implements ClusterDescriptor<ApplicationId> {
             systemShipFiles.add(file.getAbsoluteFile());
         }
 
+        /* todo 配置文件 */
         final String logConfigFilePath =
                 configuration.getString(YarnConfigOptionsInternal.APPLICATION_LOG_CONFIG_FILE);
         if (logConfigFilePath != null) {
@@ -812,6 +815,7 @@ public class YarnClusterDescriptor implements ClusterDescriptor<ApplicationId> {
         // ------------------ Add Zookeeper namespace to local flinkConfiguraton ------
         setHAClusterIdIfNotSet(configuration, appId);
 
+        /* todo 高可用配置，重试次数，默认2 */
         if (HighAvailabilityMode.isHighAvailabilityModeActivated(configuration)) {
             // activate re-execution of failed applications
             appContext.setMaxAppAttempts(
@@ -826,6 +830,7 @@ public class YarnClusterDescriptor implements ClusterDescriptor<ApplicationId> {
                     configuration.getInteger(YarnConfigOptions.APPLICATION_ATTEMPTS.key(), 1));
         }
 
+        /* todo 添加用户jar包 */
         final Set<Path> userJarFiles = new HashSet<>();
         if (jobGraph != null) {
             userJarFiles.addAll(
@@ -1090,8 +1095,10 @@ public class YarnClusterDescriptor implements ClusterDescriptor<ApplicationId> {
         }
 
         amContainer.setLocalResources(fileUploader.getRegisteredLocalResources());
+        /* todo 这里为止，上传结束 */
         fileUploader.close();
 
+        /* todo 创建存储AM的环境变量和类路径 */
         // Setup CLASSPATH and environment variables for ApplicationMaster
         final Map<String, String> appMasterEnv = new HashMap<>();
         // set user specified app master environment variables
@@ -1139,6 +1146,7 @@ public class YarnClusterDescriptor implements ClusterDescriptor<ApplicationId> {
         // set classpath from YARN configuration
         Utils.setupYarnClassPath(yarnConfiguration, appMasterEnv);
 
+        /* todo 将封装的Map（AM的环境信息类路径等）设置到容器里 */
         amContainer.setEnvironment(appMasterEnv);
 
         // Set up resource type requirements for ApplicationMaster
@@ -1174,6 +1182,7 @@ public class YarnClusterDescriptor implements ClusterDescriptor<ApplicationId> {
                 new DeploymentFailureHook(yarnApplication, fileUploader.getApplicationDir());
         Runtime.getRuntime().addShutdownHook(deploymentFailureHook);
         LOG.info("Submitting application master " + appId);
+        /* todo 核心 上传完开始提交应用 ，主要是上传dist包下的核心组件的代码 */
         yarnClient.submitApplication(appContext);
 
         LOG.info("Waiting for the cluster to be allocated");

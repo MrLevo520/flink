@@ -145,6 +145,9 @@ public final class UnorderedStreamElementQueue<OUT> implements StreamElementQueu
         return watermarkEntry;
     }
 
+    /**
+     * 判断至少有一个完成的元素
+     * */
     @Override
     public boolean hasCompletedElements() {
         return !this.segments.isEmpty() && this.segments.getFirst().hasCompleted();
@@ -214,6 +217,7 @@ public final class UnorderedStreamElementQueue<OUT> implements StreamElementQueu
         private final Queue<StreamElementQueueEntry<OUT>> completedElements;
 
         Segment(int initialCapacity) {
+            // 单独为未完成的元素创建hashSet
             incompleteElements = new HashSet<>(initialCapacity);
             completedElements = new ArrayDeque<>(initialCapacity);
         }

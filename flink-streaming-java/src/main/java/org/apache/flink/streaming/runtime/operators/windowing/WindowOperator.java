@@ -296,6 +296,7 @@ public class WindowOperator<K, IN, ACC, OUT, W extends Window>
         windowAssignerContext = null;
     }
 
+    /* todo 核心过程，处理进入窗口的元素 */
     @Override
     public void processElement(StreamRecord<IN> element) throws Exception {
         final Collection<W> elementWindows =

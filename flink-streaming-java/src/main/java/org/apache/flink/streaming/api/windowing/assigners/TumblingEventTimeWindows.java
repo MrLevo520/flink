@@ -66,6 +66,7 @@ public class TumblingEventTimeWindows extends WindowAssigner<Object, TimeWindow>
         this.windowStagger = windowStagger;
     }
 
+    /* todo 在WindowOperator的processElement中被调用 */
     @Override
     public Collection<TimeWindow> assignWindows(
             Object element, long timestamp, WindowAssignerContext context) {
@@ -75,6 +76,7 @@ public class TumblingEventTimeWindows extends WindowAssigner<Object, TimeWindow>
                         windowStagger.getStaggerOffset(context.getCurrentProcessingTime(), size);
             }
             // Long.MIN_VALUE is currently assigned when no timestamp is present
+            /* todo 确定窗口起始时间，注意offset偏移的注入 */
             long start =
                     TimeWindow.getWindowStartWithOffset(
                             timestamp, (globalOffset + staggerOffset) % size, size);

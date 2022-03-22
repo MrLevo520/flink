@@ -75,9 +75,11 @@ public class YarnClusterClientFactory
     }
 
     private YarnClusterDescriptor getClusterDescriptor(Configuration configuration) {
+        /* todo 创建yarnClient和yarn进行通信 */
         final YarnClient yarnClient = YarnClient.createYarnClient();
         final YarnConfiguration yarnConfiguration = new YarnConfiguration();
 
+        /* 初始化和启动 */
         yarnClient.init(yarnConfiguration);
         yarnClient.start();
 
@@ -89,3 +91,4 @@ public class YarnClusterClientFactory
                 false);
     }
 }
+

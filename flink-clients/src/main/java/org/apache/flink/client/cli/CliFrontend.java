@@ -84,11 +84,13 @@ import static org.apache.flink.client.cli.CliFrontendParser.HELP_OPTION;
 import static org.apache.flink.util.Preconditions.checkNotNull;
 
 /** Implementation of a simple command line frontend for executing programs. */
+// 在bin目录下直接执行时候的程序入口 flink
 public class CliFrontend {
 
     private static final Logger LOG = LoggerFactory.getLogger(CliFrontend.class);
 
     // actions
+    // client 端直接 flink run xxxxxx
     private static final String ACTION_RUN = "run";
     private static final String ACTION_RUN_APPLICATION = "run-application";
     private static final String ACTION_INFO = "info";
@@ -685,6 +687,7 @@ public class CliFrontend {
     public CommandLine getCommandLine(
             final Options commandOptions, final String[] args, final boolean stopAtNonOptions)
             throws CliArgsException {
+        // 解析flink client提交的args参数
         final Options commandLineOptions =
                 CliFrontendParser.mergeOptions(commandOptions, customCommandLineOptions);
         return CliFrontendParser.parse(commandLineOptions, args, stopAtNonOptions);
@@ -1032,7 +1035,7 @@ public class CliFrontend {
      * @param args command line arguments of the client.
      * @return The return code of the program
      */
-    public int parseAndRun(String[] args) {
+    public int  parseAndRun(String[] args) {
 
         // check for action
         if (args.length < 1) {
@@ -1049,6 +1052,7 @@ public class CliFrontend {
 
         try {
             // do action
+            // 根据flink xx来判断执行哪个
             switch (action) {
                 case ACTION_RUN:
                     run(params);
@@ -1188,12 +1192,14 @@ public class CliFrontend {
     public static List<CustomCommandLine> loadCustomCommandLines(
             Configuration configuration, String configurationDirectory) {
         List<CustomCommandLine> customCommandLines = new ArrayList<>();
+        // 加载客户端依次是Generic，Yarn和Default；之后按照顺序取出
         customCommandLines.add(new GenericCLI(configuration, configurationDirectory));
 
         //	Command line interface of the YARN session, with a special initialization here
         //	to prefix all options with y/yarn.
         final String flinkYarnSessionCLI = "org.apache.flink.yarn.cli.FlinkYarnSessionCli";
         try {
+            // 加载Yarn客户端
             customCommandLines.add(
                     loadCustomCommandLine(
                             flinkYarnSessionCLI,

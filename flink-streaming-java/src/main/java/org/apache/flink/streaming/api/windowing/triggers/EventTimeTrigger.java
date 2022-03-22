@@ -37,10 +37,12 @@ public class EventTimeTrigger extends Trigger<Object, TimeWindow> {
     public TriggerResult onElement(
             Object element, long timestamp, TimeWindow window, TriggerContext ctx)
             throws Exception {
+        /* todo 当watermark时间超过窗口界限时进行触发 */
         if (window.maxTimestamp() <= ctx.getCurrentWatermark()) {
             // if the watermark is already past the window fire immediately
             return TriggerResult.FIRE;
         } else {
+            /* todo 注册回调，内部是一个set（eventTimeTimersQueue），所以不会重复注册 */
             ctx.registerEventTimeTimer(window.maxTimestamp());
             return TriggerResult.CONTINUE;
         }

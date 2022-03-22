@@ -68,6 +68,12 @@ public final class OrderedStreamElementQueue<OUT> implements StreamElementQueue<
     public void emitCompletedElement(TimestampedCollector<OUT> output) {
         if (hasCompletedElements()) {
             final StreamElementQueueEntry<OUT> head = queue.poll();
+            LOG.debug(
+                    "Poll element {} from queue. New filling degree "
+                            + "({}/{}).",
+                    head.getInputElement(),
+                    queue.size(),
+                    capacity);
             head.emitResult(output);
         }
     }
@@ -99,16 +105,18 @@ public final class OrderedStreamElementQueue<OUT> implements StreamElementQueue<
             queue.add(queueEntry);
 
             LOG.debug(
-                    "Put element into ordered stream element queue. New filling degree "
+                    "Put element {} into ordered stream element queue. New filling degree "
                             + "({}/{}).",
+                    queueEntry.getInputElement(),
                     queue.size(),
                     capacity);
 
             return Optional.of(queueEntry);
         } else {
             LOG.debug(
-                    "Failed to put element into ordered stream element queue because it "
+                    "Failed to put element {} into ordered stream element queue because it "
                             + "was full ({}/{}).",
+                    streamElement,
                     queue.size(),
                     capacity);
 

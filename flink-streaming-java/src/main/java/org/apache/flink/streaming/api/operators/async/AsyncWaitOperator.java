@@ -18,6 +18,8 @@
 
 package org.apache.flink.streaming.api.operators.async;
 
+import java.text.SimpleDateFormat;
+
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.api.common.state.ListState;
 import org.apache.flink.api.common.state.ListStateDescriptor;
@@ -129,6 +131,11 @@ public class AsyncWaitOperator<IN, OUT>
         this.mailboxExecutor = mailboxExecutor;
     }
 
+    /**
+     * 第一步
+     * 算子的生命周期中，首先需要调用setup
+     *
+     * */
     @Override
     public void setup(
             StreamTask<?, ?> containingTask,
@@ -140,6 +147,7 @@ public class AsyncWaitOperator<IN, OUT>
                 new StreamElementSerializer<>(
                         getOperatorConfig().<IN>getTypeSerializerIn1(getUserCodeClassloader()));
 
+        // 根据不同的模式初始化异步并发的缓存队列
         switch (outputMode) {
             case ORDERED:
                 queue = new OrderedStreamElementQueue<>(capacity);
@@ -154,11 +162,19 @@ public class AsyncWaitOperator<IN, OUT>
         this.timestampedCollector = new TimestampedCollector<>(super.output);
     }
 
+    /**
+     * 第三步
+     *
+     * 在新数据未载入的情况下，进行算子初始化
+     * 对于状态恢复的数据进行重算
+     * */
     @Override
     public void open() throws Exception {
         super.open();
-
+         // 如果后端状态非空，则需要首先进行状态的载入
         if (recoveredStreamElements != null) {
+            // cp时候对元素状态的存储是用ListState<StreamElement>
+            // 重新一个个拿出来进行处理，然后把状态置空
             for (StreamElement element : recoveredStreamElements.get()) {
                 if (element.isRecord()) {
                     processElement(element.<IN>asRecord());
@@ -177,18 +193,30 @@ public class AsyncWaitOperator<IN, OUT>
         }
     }
 
+    /**
+     * 核心，处理元素，调用自定义异步部分
+     * */
     @Override
     public void processElement(StreamRecord<IN> element) throws Exception {
         // add element first to the queue
+        // 首先把元素加入队列，队列长度由capacity决定
+        // 内部会判断该队列是否已满
         final ResultFuture<OUT> entry = addToWorkQueue(element);
 
+        // resultHandler中包含了原始的数据，及该数据的result future
         final ResultHandler resultHandler = new ResultHandler(element, entry);
 
         // register a timeout for the entry if timeout is configured
+        // 对于引入该队列的元素都进行注册计时器，来判断是否超时
         if (timeout > 0L) {
             resultHandler.registerTimeout(getProcessingTimeService(), timeout);
+            System.out.println("element:" + resultHandler.inputRecord.getValue().toString() +
+                    ";registerTime:" +
+                    new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS").format(getProcessingTimeService().getCurrentProcessingTime()));
         }
 
+        // 用户自定义的async函数，调用重写的asyncInvoke
+        // resultHandler内包了resultFuture，靠.complete来完成后续值的传递
         userFunction.asyncInvoke(element.getValue(), resultHandler);
     }
 
@@ -202,6 +230,9 @@ public class AsyncWaitOperator<IN, OUT>
         outputCompletedElement();
     }
 
+    /**
+     * 快照
+     * */
     @Override
     public void snapshotState(StateSnapshotContext context) throws Exception {
         super.snapshotState(context);
@@ -213,6 +244,7 @@ public class AsyncWaitOperator<IN, OUT>
         partitionableState.clear();
 
         try {
+            // 将capacity开辟队列的数据全部存入
             partitionableState.addAll(queue.values());
         } catch (Exception e) {
             partitionableState.clear();
@@ -226,6 +258,10 @@ public class AsyncWaitOperator<IN, OUT>
         }
     }
 
+    /**
+     * 第二步
+     * 从状态后端拿状态来进行初始化Status
+     * */
     @Override
     public void initializeState(StateInitializationContext context) throws Exception {
         super.initializeState(context);
@@ -260,7 +296,9 @@ public class AsyncWaitOperator<IN, OUT>
             throws InterruptedException {
 
         Optional<ResultFuture<OUT>> queueEntry;
+
         while (!(queueEntry = queue.tryPut(streamElement)).isPresent()) {
+            // 不断往队列里加数据，直到达到capacity
             mailboxExecutor.yield();
         }
 
@@ -282,6 +320,7 @@ public class AsyncWaitOperator<IN, OUT>
      * processing the result of an async function call.
      */
     private void outputCompletedElement() {
+        // 根据order或者unorder来分别调用OrderedStreamElementQueue和UnorderedStreamElementQueue
         if (queue.hasCompletedElements()) {
             // emit only one element to not block the mailbox thread unnecessarily
             queue.emitCompletedElement(timestampedCollector);
@@ -316,6 +355,9 @@ public class AsyncWaitOperator<IN, OUT>
             this.resultFuture = resultFuture;
         }
 
+        /**
+         * 当resultFuture填充完值时
+         * */
         @Override
         public void complete(Collection<OUT> results) {
             Preconditions.checkNotNull(
